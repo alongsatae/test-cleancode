@@ -28,9 +28,44 @@ class HomePageTest(TestCase):
 
 		response = home_page(request)
 
-		self.assertIn('신규 작업 아이템', response.content.decode())
-		expected_html = render_to_string('home.html', {'new_item_text': '신규 작업 아이템'})
-		self.assertEqual(response.content.decode(), expected_html)
+		self.assertEqual(Item.objects.count(), 1)
+		new_item = Item.objects.first()
+		self.assertEqual(new_item.text, '신규 작업 아이템')
+
+#		self.assertEqual(response.status_code, 302)
+#		self.assertEqual(response['location'], '/')
+
+		#응답이 리디렉션을 하기 때문에, 어설션 제거
+#		self.assertIn('신규 작업 아이템', response.content.decode())
+#		expected_html = render_to_string('home.html', {'new_item_text': '신규 작업 아이템'})
+#		self.assertEqual(response.content.decode(), expected_html)
+
+
+	def test_home_page_redirects_after_POST(self):
+		request = HttpRequest()
+		request.method = 'POST'
+		request.POST['item_text'] = '신규 작업 아이템'
+
+		response = home_page(request)
+
+		self.assertEqual(response.status_code, 302)
+		#self.assertEqual(response['location'], '/')
+		self.assertEqual(response['location'], '/lists/the-only-list-in-the-world/')
+
+	# def test_home_page_displays_all_list_items(self):
+	# 	Item.objects.create(text = 'itemey 1')
+	# 	Item.objects.create(text = 'itemey 2')
+
+	# 	request = HttpRequest()
+	# 	response = home_page(request)
+
+	# 	self.assertIn('itemey 1', response.content.decode())
+	# 	self.assertIn('itemey 2', response.content.decode())
+
+	def test_home_page_only_saves_items_when_necessary(self):
+		request = HttpRequest()
+		home_page(request)
+		self.assertEqual(Item.objects.count(), 0)
 
 class ItemModelTest(TestCase):
 	def test_saving_and_retrieving_items(self):
@@ -49,3 +84,17 @@ class ItemModelTest(TestCase):
 		second_saved_item = saved_items[1]
 		self.assertEqual(first_saved_item.text, '첫 번째 아이템')
 		self.assertEqual(second_saved_item.text, '두 번째 아이템')
+
+class ListViewTest(TestCase):
+	def test_uses_list_templatee(self):
+		response=self.client.get('/lists/the-only-list-in-the-world/')
+		self.assertTemplateUsed(response, 'list.html')
+		
+	def test_displays_all_items(self):
+		Item.objects.create(text = 'itemey 1')
+		Item.objects.create(text = 'itemey 2')
+
+		response = self.client.get('/lists/the-only-list-in-the-world/')
+
+		self.assertContains(response, 'itemey 1')
+		self.assertContains(response, 'itemey 2')
