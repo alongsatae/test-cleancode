@@ -1,10 +1,27 @@
-from django.test import LiveServerTestCase
+#from django.test import LiveServerTestCase
+from django.contrib.staticfiles.testing import StaticLiveServerTestCase 
+
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
+import sys
 #import unittest
 
 #class NewVisitorTest(unittest.TestCase):
-class NewVisitorTest(LiveServerTestCase):
+#class NewVisitorTest(LiveServerTestCase):
+class NewVisitorTest(StaticLiveServerTestCase):
+	@classmethod
+	def setUpClass(cls):
+		for arg in sys.argv:
+			if 'liveserver' in arg:
+				cls.server_url = 'http://' + arg.split('=')[1]
+				return
+		super().setUpClass()
+		cls.server_url = cls.live_server_url
+
+	@classmethod
+	def tearDownClass(cls):
+		if cls.server_url == cls.live_server_url:
+			super().tearDownClass()
 
 	def setUp(self):
 		self.browser = webdriver.Firefox()
@@ -23,11 +40,12 @@ class NewVisitorTest(LiveServerTestCase):
 
 	def test_can_start_a_list_and_retrieve_it_later(self):
 		#self.browser.get('http://localhost:8000')
-		self.browser.get(self.live_server_url)
+		#self.browser.get(self.live_server_url)
+		self.browser.get(self.server_url)
 
 		self.assertIn('To-Do', self.browser.title)
 		header_text = self.browser.find_element_by_tag_name('h1').text
-		self.assertIn('작업목록', header_text)
+		self.assertIn('작업 목록', header_text)
 
 		inputbox = self.browser.find_element_by_id('id_new_item')
 		self.assertEqual(inputbox.get_attribute('placeholder'), '작업 아이템 입력')
@@ -63,7 +81,9 @@ class NewVisitorTest(LiveServerTestCase):
 		self.browser.quit()
 		self.browser = webdriver.Firefox()
 
-		self.browser.get(self.live_server_url)
+		#self.browser.get(self.live_server_url)
+		self.browser.get(self.server_url)
+
 		page_text = self.browser.find_element_by_tag_name('body').text
 		self.assertNotIn('공작깃털 사기', page_text)
 		self.assertNotIn('그물 만들기', page_text)
@@ -91,3 +111,26 @@ class NewVisitorTest(LiveServerTestCase):
 #예를 들어, python functional_test.py 라는 식으로 호출시에는 아래 구문 필요
 #if __name__ == '__main__':
 #	unittest.main(warnings='ignore')
+
+	def test_layout_and_styling(self):
+		
+		#self.browser.get(self.live_server_url)
+		self.browser.get(self.server_url)
+
+		self.browser.set_window_size(1024, 768)
+
+		inputbox = self.browser.find_element_by_id('id_new_item')
+		self.assertAlmostEqual(
+			inputbox.location['x']+inputbox.size['width'] / 2,
+			512,
+			delta=10)
+		
+		# 그녀는 새로운 리스트를 시작하고 입력 상자가
+		# 가운데 배치된 것을 확인한다
+		inputbox.send_keys('testing\n')
+		inputbox = self.browser.find_element_by_id('id_new_item')
+		self.assertAlmostEqual(
+			inputbox.location['x'] + inputbox.size['width'] / 2,
+			512,
+			delta=10
+		)
